@@ -10,11 +10,20 @@ from sklearn.metrics import accuracy_score, classification_report
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 # Loading dataset
+# Dataset Link: https://archive.ics.uci.edu/dataset/73/mushroom
  
+# fetch dataset
 mushroom = fetch_ucirepo(id=73)
  
-x = mushroom.data.features
-y = mushroom.data.targets.iloc[:, 0] # edible (e) / poisonouse (p)
- 
+# data (as pandas dataframes) 
+X = mushroom.data.features 
+y = mushroom.data.targets 
+  
+# metadata 
+print(mushroom.metadata) 
+  
+# variable information 
+print(mushroom.variables) 
+
 # One-hpt encoding (missing values treated as category)
 x_encoded = pd.get_dummies(x, drop_first=False)
