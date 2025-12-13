@@ -123,4 +123,15 @@ final_rf = RandomForestClassifier(
 )
 
 final_rf.fit(X_train_val, y_train_val)
+
+
+
+
+# Test performance
+
+y_test_pred = final_rf.predict(X_test)
+
+print("\nTest results:")
+print("Accuracy", accuracy_score(y_test, y_test_pred))
+print(classification_report(y_test, y_test_pred))
      
