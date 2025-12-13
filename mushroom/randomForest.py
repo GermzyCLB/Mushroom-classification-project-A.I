@@ -17,8 +17,20 @@ mushroom = fetch_ucirepo(id=73)
  
 # data (as pandas dataframes) 
 X = mushroom.data.features 
-y = mushroom.data.targets 
-  
+y = mushroom.data.targets
+if isinstance(y, pd.DataFrame):
+    if y.shape[1] == 1:
+        y = y.iloc[:, 0]
+    else:
+        raise ValueError(f"Unexpected target DataFrame shaoe: {y.shape}")
+        
+# Debug: inspect X and y to avoid indexing surprises
+print("X type", type(X), "shape:", getattr(X, "shape", None))
+print("y type:", type(y), "shape:", getattr(y, "shape", None))
+print("y sample values (value_counts):\n", getattr(y, "value_counts", lambda: None)())
+print("X sample columns", list(X.columns[:10]))
+print("First row of X:\n", X.head(1))
+
 # metadata 
 print(mushroom.metadata) 
   
@@ -138,10 +150,7 @@ print(classification_report(y_test, y_test_pred))
 # Confusion Matrix Implementation
 
 cm = confusion_matrix(y_test, y_test_pred, labels=['e', 'p'])
-disp = ConfusionMatrixDisplay(
-    confusion_matrix=cm,
-    display_labels=['edible', 'poisonous']
-)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['edible', 'poisonous'])
 
 disp.plot()
 plt.title("Random Forest - Test Set")
