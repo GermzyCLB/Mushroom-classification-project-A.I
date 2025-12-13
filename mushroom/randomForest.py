@@ -26,4 +26,26 @@ print(mushroom.metadata)
 print(mushroom.variables) 
 
 # One-hpt encoding (missing values treated as category)
-x_encoded = pd.get_dummies(X, drop_first=False)
+X_encoded = pd.get_dummies(X, drop_first=False)
+
+
+
+# Train/Validate/Test split (70/15/15) on dataset
+
+X_train_val, X_test, y_train_val, y_test = train_test_split(
+    X_encoded, y,
+    test_size = 0.15,
+    stratify = y,
+    random_state=42
+)
+
+val_size = 0.15
+remaining = 1 - 0.15
+val_fraction = val_size / remaining
+
+X_train, X_val, y_train, y_val = train_test_split(
+    X_train_val, y_train_val,
+    test_size = val_fraction,
+    stratify=y_train_val,
+    random_state=42
+)
