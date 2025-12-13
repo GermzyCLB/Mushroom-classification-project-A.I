@@ -49,3 +49,23 @@ X_train, X_val, y_train, y_val = train_test_split(
     stratify=y_train_val,
     random_state=42
 )
+
+# Majority-class baseline
+
+majority_class = y_train.mode()[0]
+
+y_test_baseline = [majority_class] * len(y_test)
+
+print("Majority baseline accuracy:", accuracy_score(y_test, y_test_baseline))
+
+# Hyperparameter grid
+
+param_grid = {
+    'n_estimators': [50, 100, 200],
+    'max_depth': [None, 5, 10, 20],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 5],
+    'max_features': ['sqrt', 'log2']
+}
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
