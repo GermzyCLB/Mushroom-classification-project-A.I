@@ -99,3 +99,13 @@ grid.fit(X_train, y_train)
 
 print("\nBest parameters (REAL)", grid.best_params_)
 print("Best CV F1-macro (REAL):, grid.best_score_")
+
+
+
+
+# Validation performance
+best_rf = grid.best_estimator_
+y_val_pred = best_rf.predict(X_val)
+
+print("\nValidation results:")
+print(classification_report(y_val, y_val_pred)
