@@ -1,11 +1,13 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+from ucimlrepo import fetch_ucirepo
+
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
-# Random Forest hyperparamter grid
-rf_param_grid = {
-    'n_estimators': [100, 300],
-    'max_depth': [None, 10, 20],
-    'min_samples_leaf': [1, 5],
-    'max_features': ['sqrt', 'log2']
-    }
-
+ 
 
