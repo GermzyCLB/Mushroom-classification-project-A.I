@@ -9,5 +9,12 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
+# Loading dataset
  
-
+mushroom = fetch_ucirepo(id=73)
+ 
+x = mushroom.data.features
+y = mushroom.data.targets.iloc[:, 0] # edible (e) / poisonouse (p)
+ 
+# One-hpt encoding (missing values treated as category)
+x_encoded = pd.get_dummies(x, drop_first=False)
