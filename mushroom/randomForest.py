@@ -134,4 +134,16 @@ y_test_pred = final_rf.predict(X_test)
 print("\nTest results:")
 print("Accuracy", accuracy_score(y_test, y_test_pred))
 print(classification_report(y_test, y_test_pred))
+
+# Confusion Matrix Implementation
+
+cm = confusion_matrix(y_test, y_test_pred, labels=['e', 'p'])
+disp = ConfusionMatrixDisplay(
+    confustion_matrix=cm,
+    displayLabels=['edible', 'poisonous']
+)
+
+disp.plot()
+plt.title("Random Forest - Test Set")
+plt.show()
      
