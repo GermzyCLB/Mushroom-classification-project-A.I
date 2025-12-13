@@ -98,7 +98,7 @@ grid = GridSearchCV(
 grid.fit(X_train, y_train)
 
 print("\nBest parameters (REAL)", grid.best_params_)
-print("Best CV F1-macro (REAL):, grid.best_score_")
+print("Best CV F1-macro (REAL):", grid.best_score_)
 
 
 
@@ -139,8 +139,8 @@ print(classification_report(y_test, y_test_pred))
 
 cm = confusion_matrix(y_test, y_test_pred, labels=['e', 'p'])
 disp = ConfusionMatrixDisplay(
-    confustion_matrix=cm,
-    displayLabels=['edible', 'poisonous']
+    confusion_matrix=cm,
+    display_labels=['edible', 'poisonous']
 )
 
 disp.plot()
