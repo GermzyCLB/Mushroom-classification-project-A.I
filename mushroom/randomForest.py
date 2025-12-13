@@ -26,4 +26,4 @@ print(mushroom.metadata)
 print(mushroom.variables) 
 
 # One-hpt encoding (missing values treated as category)
-x_encoded = pd.get_dummies(x, drop_first=False)
+x_encoded = pd.get_dummies(X, drop_first=False)
