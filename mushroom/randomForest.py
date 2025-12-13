@@ -30,6 +30,7 @@ X_encoded = pd.get_dummies(X, drop_first=False)
 
 
 
+
 # Train/Validate/Test split (70/15/15) on dataset
 
 X_train_val, X_test, y_train_val, y_test = train_test_split(
@@ -50,6 +51,9 @@ X_train, X_val, y_train, y_val = train_test_split(
     random_state=42
 )
 
+
+
+
 # Majority-class baseline
 
 majority_class = y_train.mode()[0]
@@ -57,6 +61,9 @@ majority_class = y_train.mode()[0]
 y_test_baseline = [majority_class] * len(y_test)
 
 print("Majority baseline accuracy:", accuracy_score(y_test, y_test_baseline))
+
+
+
 
 # Hyperparameter grid
 
@@ -69,3 +76,26 @@ param_grid = {
 }
 
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+
+
+
+# Grid Search
+
+rf = RandomForestClassifier(
+    random_state=42,
+    class_weight='balanced'
+)
+
+grid = GridSearchCV(
+    rf,
+    param_grid,
+    scoring='f1_macro',
+    cv=cv,
+    n_jobs=-1
+)
+
+grid.fit(X_train, y_train)
+
+print("\nBest parameters (REAL)", grid.best_params_)
+print("Best CV F1-macro (REAL):, grid.best_score_")
