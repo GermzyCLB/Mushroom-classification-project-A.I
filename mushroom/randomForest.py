@@ -104,8 +104,23 @@ print("Best CV F1-macro (REAL):, grid.best_score_")
 
 
 # Validation performance
+
 best_rf = grid.best_estimator_
 y_val_pred = best_rf.predict(X_val)
 
 print("\nValidation results:")
-print(classification_report(y_val, y_val_pred)
+print(classification_report(y_val, y_val_pred))
+
+
+
+
+# Retrain on Train and Validation
+
+final_rf = RandomForestClassifier(
+    **grid.best_params_,
+    random_state=42,
+    class_weight='balanced'
+)
+
+final_rf.fit(X_train_val, y_train_val)
+     
