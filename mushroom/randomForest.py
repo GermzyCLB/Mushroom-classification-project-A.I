@@ -1,13 +1,21 @@
+import os
+import json
+import time
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
 from ucimlrepo import fetch_ucirepo
 
-from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
+
 from sklearn.ensemble import RandomForestClassifier
+
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import make_scorer, recall_score, f1_score
+from sklearn.metrics import precision_score, accuracy_score, roc_auc_score
 
 # Loading dataset
 # Dataset Link: https://archive.ics.uci.edu/dataset/73/mushroom
@@ -156,3 +164,148 @@ disp.plot()
 plt.title("Random Forest - Test Set")
 plt.show()
      
+os.makedirs("results", exist_ok=True)
+os.makedirs("results/figures", exist_ok=True)
+
+def evaluate_on_sets(model, X_val, y_val, X_test, y_test):
+    yv = model.predict(X_val)
+    yt = model.predict(X_test)
+    try:
+        probs_test = model.predict_proba(X_test)[:,1]
+    except Exception:
+        probs_test = None
+    metrics_val = {
+        "accuracy_val": accuracy_score(y_val, yv),
+        "precision_val": precision_score(y_val, yv, pos_label='p'),
+        "recall_val": recall_score(y_val, yv, pos_label='p'),
+        "f1_val": f1_score(y_val, yv, pos_label='p'),
+    }
+    metrics_test = {
+        "accuracy_test": accuracy_score(y_test, yt),
+        "precision_test": precision_score(y_test, yt, pos_label='p'),
+        "recall_test": recall_score(y_test, yt, pos_label='p'),
+        "f1_test": f1_score(y_test, yt, pos_label='p'),
+    }
+    if probs_test is not None:
+        try: 
+            metrics_test["roc_auc_test"] = roc_auc_score((y_test == 'p').astype(int), probs_test)
+        except Exception:
+            metrics_test["roc_auc_test"] = None
+    else:
+        metrics_test["roc_auc_test"] = None
+    return {**metrics_val, **metrics_test}
+
+# Define parameter sets
+grid_small = {
+    'n_estimators': [50, 100, 200],
+    'max_depth': [None, 10, 20],
+    "min_samples_leaf": [1, 2, 5],
+    "max_features": ['sqrt', 'log2']
+}
+
+grid_wider = {
+    'n_estimators': [50, 100, 200, 400],
+    'max_depth': [None, 5, 10, 20],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 5],
+    'max_features': ['sqrt', 'log2', 0.5],
+    'criterion': ['gini', 'entropy'],
+    'bootstrap': [True, False]
+}
+
+rand_params = {
+    'n_estimators': [50, 100, 200, 400, 800],
+    'max_depth': [None, 5, 10, 20, 30],
+    'min_samples_split': [2, 5, 10, 20],
+    'min_samples_leaf': [1, 2, 4, 8],
+    'max_features': ['sqrt', 'log2', 0.3, 0.5],
+    'criterion': ['gini', 'entropy'],
+    'bootstrap': [True, False]
+}
+
+# scorers
+recall_p_scorer = make_scorer(recall_score, pos_label='p')
+f1_macro_scorer = 'f1_macro'
+
+experiments = []
+
+def run_grid_search(name, param_grid, scoring, use_random=False, n_iter=30):
+    start = time.time()
+    if use_random:
+        search = RandomizedSearchCV(RandomForestClassifier(random_state=42, class_weight='balanced'),
+                                    param_distributions=param_grid,
+                                    n_iter=n_iter,
+                                    scoring=scoring,
+                                    cv=cv,
+                                    n_jobs=-1,
+                                    random_state=42,
+                                    verbose=1)
+    else:
+        search = GridSearchCV(RandomForestClassifier(random_state=42, class_weight='balanced'),
+                              param_grid=param_grid,
+                              scoring=scoring,
+                              cv=cv,
+                              n_jobs=-1,
+                              verbose=1)
+    search.fit(X_train, y_train)
+    duration = time.time() - start
+    best = search.best_estimator_
+    res = evaluate_on_sets(best, X_val, y_val, X_test, y_test)
+    row = {
+        "experiment": name,
+        "scoring": scoring if isinstance(scoring, str) else "recall_p",
+        "best_params": json.dumps(search.best_params_),
+        "cv_best_score": float(search.best_score_),
+        "duration_s": duration,
+        **res
+    }
+    experiments.append(row)
+    # Save intermediate CSV so you don't lose results
+    pd.DataFrame(experiments).to_csv("results/ rf_experiments.csv", index=False)
+    return search
+
+# 1. Grid (small) optimizing f1_macro
+print("Running grid_small optimizing f1_macro...")
+g1 = run_grid_search("grid_small_f1", grid_small, f1_macro_scorer, use_random=False)
+
+# 2. Grid (small) optimizing poisonous recall
+print("Running grid_small optimizing recall_p...")
+g2 = run_grid_search("grid_small_recall", grid_small, recall_p_scorer, use_random=False)
+
+# 3. Randomized (wider) optimizing f1_macro (fast)
+print("Running randomized wide optimizing f1_macro...")
+r1 = run_grid_search("rand_wide_f1", rand_params, f1_macro_scorer, use_random=True, n_iter=40)
+
+# 4. Randomized (wider) optimizing recall_p
+print("Running randomized wide optimizing recall_p...")
+r2 = run_grid_search("rand_wide_recall", rand_params, recall_p_scorer, use_random=True, n_iter=40)
+
+# 5. Shuffle-label baseline: shuffle training labels and run small grid for sanity check
+print("Running shuffle-label baseline (sanity check)...")
+y_train_shuffled = y_train.sample(frac=1.0, random_state=42)
+# Need X_train indices aligned: reset X_train index to match
+X_train_shuffled = X_train.reset_index(drop=True)
+
+search_shuffled = GridSearchCV(RandomForestClassifier(random_state=42, class_weight='balanced'),
+                               param_grid=grid_small, scoring=f1_macro_scorer,
+                               cv=cv,
+                               n_jobs=-1)
+search_shuffled.fit(X_train_shuffled, y_train_shuffled)
+best_shuffled = search_shuffled.best_estimator_
+res_shuffled = evaluate_on_sets(best_shuffled, X_val, y_val, X_test, y_test)
+experiments.append({
+    "experiment": "shuffle_label",
+    "scoring": f1_macro_scorer,
+    "best_params": json.dumps(search_shuffled.best_params_),
+    "cv_best_score": float(search_shuffled.best_score_),
+    "duration_s": None,
+    **res_shuffled
+})
+pd.DataFrame(experiments).to_csv("results/rf_experiments.csv", index=False)
+
+# Final printout
+df_results = pd.DataFrame(experiments)
+print("\nALL EXPERIMENTS RESULT SUMMARY:")
+print(df_results[["experiment", "cv_best_score", "accuracy_test", "recall_test", "f1_test"]].to_string(index = False))
+print("\nSaved experiments to results/rf_experiments.csv")
+print("Random Forest test accuracy", accuracy_score(y_test, y_test_pred))
