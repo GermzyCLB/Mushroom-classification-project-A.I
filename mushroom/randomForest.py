@@ -45,7 +45,7 @@ print(mushroom.metadata)
 # variable information 
 print(mushroom.variables) 
 
-# One-hpt encoding (missing values treated as category)
+# One-hot encoding (missing values treated as category)
 X_encoded = pd.get_dummies(X, drop_first=False)
 
 
@@ -223,6 +223,17 @@ rand_params = {
     'bootstrap': [True, False]
 }
 
+grid_expanded = {
+    'n_estimators': [100, 200, 400, 800],
+    'max_depth': [None, 10, 20, 30],
+    'min_samples_split': [2, 5, 10, 20],
+    'min_samples_leaf': [1, 2, 4, 8],
+    'max_features': ['sqrt', 'log2', 0.3, 0.5],
+    'criterion':['gini', 'entropy'],
+    'bootstrap': [True, False],
+    'max_samples': [None, 0.5, 0.8] # subsampling at tree level
+    }
+
 # scorers
 recall_p_scorer = make_scorer(recall_score, pos_label='p')
 f1_macro_scorer = 'f1_macro'
@@ -280,7 +291,17 @@ r1 = run_grid_search("rand_wide_f1", rand_params, f1_macro_scorer, use_random=Tr
 print("Running randomized wide optimizing recall_p...")
 r2 = run_grid_search("rand_wide_recall", rand_params, recall_p_scorer, use_random=True, n_iter=40)
 
-# 5. Shuffle-label baseline: shuffle training labels and run small grid for sanity check
+# 5. Randomized (expanded) optimizing recall_p (strong final RF candidate)
+print("Running randomized expanded grid optimizing recall_p...")
+r3 = run_grid_search(
+    "rand_expanded_recall",
+    grid_expanded,
+    recall_p_scorer,
+    use_random=True,
+    n_iter=60
+)
+
+# 6. Shuffle-label baseline: shuffle training labels and run small grid for sanity check
 print("Running shuffle-label baseline (sanity check)...")
 y_train_shuffled = y_train.sample(frac=1.0, random_state=42)
 # Need X_train indices aligned: reset X_train index to match
@@ -303,9 +324,48 @@ experiments.append({
 })
 pd.DataFrame(experiments).to_csv("results/rf_experiments.csv", index=False)
 
+# 7. Additional shuffle-label baselines with diffetent random seeds
+print("Running multiple shuffle-label baselines...")
+
+for seed in [1, 7, 21, 99]:
+    y_train_shuffled_multi = y_train.sample(frac=1.0, random_state=seed)
+    X_train_shuffled_multi = X_train.reset_index(drop=True)
+    
+    search_shuffled_multi = GridSearchCV(
+        RandomForestClassifier(random_state=42, class_weight='balanced'),
+        param_grid=grid_small,
+        scoring=f1_macro_scorer,
+        cv=cv,
+        n_jobs=-1
+    )
+    
+    search_shuffled_multi.fit(X_train_shuffled_multi, y_train_shuffled_multi)
+    
+    best_shuffled_multi = search_shuffled_multi.best_estimator_
+    res_multi = evaluate_on_sets(
+        best_shuffled_multi, X_val, y_val, X_test, y_test
+    )
+    
+    experiments.append({
+        "experiment": f"shuffle_label_seed_{seed}",
+        "scoring": f1_macro_scorer,
+        "best_params": json.dumps(search_shuffled_multi.best_params_),
+        "cv_best_score": float(search_shuffled_multi.best_score_),
+        "duration_s": None,
+        ** res_multi
+    })
+pd.DataFrame(experiments).to_csv("results/rf_experiments.csv", index=False)
+
 # Final printout
 df_results = pd.DataFrame(experiments)
 print("\nALL EXPERIMENTS RESULT SUMMARY:")
 print(df_results[["experiment", "cv_best_score", "accuracy_test", "recall_test", "f1_test"]].to_string(index = False))
 print("\nSaved experiments to results/rf_experiments.csv")
 print("Random Forest test accuracy", accuracy_score(y_test, y_test_pred))
+
+print("\nFinal Random Forest chosen based on highest poisonous recall: ")
+best_overall = max(
+    experiments,
+    key=lambda x: x.get("recall_test", 0)
+)
+print(best_overall)
