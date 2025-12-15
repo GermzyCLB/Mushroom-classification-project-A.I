@@ -232,7 +232,17 @@ grid_expanded = {
     'criterion':['gini', 'entropy'],
     'bootstrap': [True, False],
     'max_samples': [None, 0.5, 0.8] # subsampling at tree level
-    }
+}
+
+refined_params = {
+    'n_estimators': [400, 600, 800],
+    'max_depth': [None, 20, 30],
+    'min_samples_split': [2, 5],
+    'min_samples_leaf': [1, 2],
+    'max_features': ['sqrt', 0.5],
+    'bootstrap': [True],
+    'max_samples': [0.7, 0.9]
+}
 
 # scorers
 recall_p_scorer = make_scorer(recall_score, pos_label='p')
@@ -291,7 +301,7 @@ r1 = run_grid_search("rand_wide_f1", rand_params, f1_macro_scorer, use_random=Tr
 print("Running randomized wide optimizing recall_p...")
 r2 = run_grid_search("rand_wide_recall", rand_params, recall_p_scorer, use_random=True, n_iter=40)
 
-# 5. Randomized (expanded) optimizing recall_p (strong final RF candidate)
+# 5. Randomized (expanded) optimizing recall_p (strong RF candidate)
 print("Running randomized expanded grid optimizing recall_p...")
 r3 = run_grid_search(
     "rand_expanded_recall",
@@ -301,7 +311,17 @@ r3 = run_grid_search(
     n_iter=60
 )
 
-# 6. Shuffle-label baseline: shuffle training labels and run small grid for sanity check
+# 6. Final refined RF search (fine-grained, limited scope)
+print("Running final refined RF search...")
+r4 = run_grid_search(
+    "rand_refined_recall",
+    refined_params,
+    recall_p_scorer,
+    use_random=True,
+    n_iter=25
+)
+
+# 7. Shuffle-label baseline: shuffle training labels and run small grid for sanity check
 print("Running shuffle-label baseline (sanity check)...")
 y_train_shuffled = y_train.sample(frac=1.0, random_state=42)
 # Need X_train indices aligned: reset X_train index to match
@@ -324,7 +344,7 @@ experiments.append({
 })
 pd.DataFrame(experiments).to_csv("results/rf_experiments.csv", index=False)
 
-# 7. Additional shuffle-label baselines with diffetent random seeds
+# 8. Additional shuffle-label baselines with different random seeds
 print("Running multiple shuffle-label baselines...")
 
 for seed in [1, 7, 21, 99]:
@@ -354,6 +374,41 @@ for seed in [1, 7, 21, 99]:
         "duration_s": None,
         ** res_multi
     })
+pd.DataFrame(experiments).to_csv("results/rf_experiments.csv", index=False)
+
+# 9. Extra shuffle-label seeds (final sanity check)
+print("Running extra shuffle-label sanity checks...")
+
+extra_shuffle_seeds = [2, 11, 33, 123]
+
+for seed in extra_shuffle_seeds:
+    y_train_shuffled_extra = y_train.sample(frac=1.0, random_state=seed)
+    X_train_shuffled_extra = X_train.reset_index(drop=True)
+    
+    search_extra = GridSearchCV(
+        RandomForestClassifier(random_state=seed, class_weight='balanced'),
+        param_grid=grid_small,
+        scoring=f1_macro_scorer,
+        cv=cv,
+        n_jobs=-1
+    )
+    
+    search_extra.fit(X_train_shuffled_extra, y_train_shuffled_extra)
+    
+    best_extra = search_extra.best_estimator_
+    res_extra = evaluate_on_sets(
+        best_extra, X_val, y_val, X_test, y_test
+    )
+    
+    experiments.append({
+        "experiment": f"shuffle_label_seed_{seed}",
+        "scoring": f1_macro_scorer,
+        "best_params": json.dumps(search_shuffled_multi.best_params_),
+        "cv_best_score": float(search_shuffled_multi.best_score_),
+        "duration_s": None,
+        ** res_extra
+    })
+
 pd.DataFrame(experiments).to_csv("results/rf_experiments.csv", index=False)
 
 # Final printout
