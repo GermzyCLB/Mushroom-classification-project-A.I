@@ -118,3 +118,59 @@ plt.grid(axis="y")
 plt.show()
 
 
+# Shuffle-Label Baseline
+
+# Shuffle training labels
+rng = np.random.default_rng(42)
+y_train_shuffled = rng.permutation(y_train)
+
+# Refit the SAME pipeline on shuffled labels
+svm_pipeline.fit(X_train, y_train_shuffled)
+
+# Predict on the REAL test set
+y_pred_shuffled = svm_pipeline.predict(X_test)
+
+# Metrics
+shuffle_accuracy = accuracy_score(y_test, y_pred_shuffled)
+shuffle_precision = precision_score(y_test, y_pred_shuffled, average=None)
+shuffle_recall = recall_score(y_test, y_pred_shuffled, average=None)
+shuffle_f1 = f1_score(y_test, y_pred_shuffled, average=None)
+
+print("\n=== Shuffle-Label Baseline Results ===")
+print(f"Accuracy: {shuffle_accuracy:.3f}")
+
+print("\nClassification Report (Shuffled Labels):")
+print(classification_report(
+    y_test,
+    y_pred_shuffled,
+    target_names=["edible", "poisonous"]
+))
+
+cm_shuffle = confusion_matrix(y_test, y_pred_shuffled)
+
+disp_shuffle = ConfusionMatrixDisplay(
+    confusion_matrix=cm_shuffle,
+    display_labels=["edible", "poisonous"]
+)
+
+disp_shuffle.plot(cmap="Reds")
+plt.title("SVM Confusion Matrix (Shuffle-Label Baseline)")
+plt.show()
+
+
+labels = ["edible", "poisonous"]
+x = np.arange(len(labels))
+width = 0.35
+
+plt.figure(figsize=(8,5))
+plt.bar(x - width/2, recall, width, label="Real SVM")
+plt.bar(x + width/2, shuffle_recall, width, label="Shuffle Baseline")
+
+plt.xticks(x, labels)
+plt.ylabel("Recall")
+plt.ylim(0, 1)
+plt.title("Recall Comparison: Real SVM vs Shuffle-Label Baseline")
+plt.legend()
+plt.grid(axis="y")
+plt.show()
+
