@@ -334,6 +334,22 @@ search_shuffled = GridSearchCV(RandomForestClassifier(random_state=42, class_wei
 search_shuffled.fit(X_train_shuffled, y_train_shuffled)
 best_shuffled = search_shuffled.best_estimator_
 res_shuffled = evaluate_on_sets(best_shuffled, X_val, y_val, X_test, y_test)
+
+# Confusion matrix for shuffled-label baseline
+y_test_pred_shuffled = best_shuffled.predict(X_test)
+
+cm_shuffled = confusion_matrix(y_test, y_test_pred_shuffled, labels=['e', 'p'])
+disp_shuffled = ConfusionMatrixDisplay(
+    confusion_matrix=cm_shuffled,
+    display_labels=['edible', 'poisonous']
+)
+
+disp_shuffled.plot()
+plt.title("Random Forest (Shuffled Labels) - Test Set")
+plt.tight_layout()
+plt.show()
+
+
 experiments.append({
     "experiment": "shuffle_label",
     "scoring": f1_macro_scorer,
