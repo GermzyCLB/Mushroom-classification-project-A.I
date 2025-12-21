@@ -50,7 +50,7 @@ X_train, X_val, y_train, y_val =train_test_split(X_train_val, y_train_val, test_
 #overfitting detection
 
 
-# 1)Majority-class baseline-have baseline fpor accuracy
+# 1)Majority-class baseline-have baseline for accuracy
 majority_class = y_train.mode()[0]   # simplest way to get most common class
 
 print("Majority class:", majority_class)
@@ -62,7 +62,7 @@ y_test_pred = [majority_class] * len(y_test)
 print("Validation accuracy:", accuracy_score(y_val, y_val_pred))
 print("Test accuracy:", accuracy_score(y_test, y_test_pred))
 
-#now we have the original 52% reference point..now time to 
+#now we have the original 52% reference point baseline..now time to deal with the rest and tuned decision tree
 
 cm_baseline = confusion_matrix(y_test, y_test_pred, labels=['e','p'])
 disp = ConfusionMatrixDisplay(confusion_matrix = cm_baseline , display_labels=['edible','poisonous'])
@@ -151,7 +151,7 @@ cv_results_df[
 #output the best tuned decision tree results from the gridsearch cross validation
 best_dct_real_output = grid_real_output.best_estimator_
 
-#now evaluate the tuned model on he validation set 
+#now evaluate the tuned model on the validation set 
 y_val_pred_real = best_dct_real_output.predict(X_val)
 
 
@@ -241,7 +241,7 @@ display_labels=['edible', 'poisonous']
 
 displayed_shuffled.plot()
 plt.title("The decision tree on shuffled labels(ON TEST SET!!")
-plt.show
+plt.show()
 
 
 
